@@ -125,3 +125,23 @@ main = do
   let puzzle = freshPuzzle (fmap toLower word)
   runGame puzzle 0
 
+palindrome :: IO ()
+palindrome = forever $ do
+  l <- getLine
+  case (pal l) of
+    True -> putStrLn "It's a palindrome!"
+    False -> do
+      putStrLn "Nope!"
+      exitSuccess
+
+pal :: String -> Bool
+pal s =
+  normalize s == (reverse . normalize $ s)
+
+normalize :: String -> String
+normalize s =
+  let lower = fmap toLower s
+      nospaces = concat . words
+      onlychars = filter (flip elem ['a'..'z'])
+  in (nospaces . onlychars) lower
+  
