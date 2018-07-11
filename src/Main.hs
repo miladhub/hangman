@@ -41,7 +41,6 @@ randomWord' = gameWords >>= randomWord
 
 data Puzzle =
   Puzzle String [Maybe Char] [Char]
---  deriving Show
 
 instance Show Puzzle where
   show (Puzzle _ discovered guessed) =
@@ -74,32 +73,26 @@ fillInCharacter (Puzzle word filledInSoFar s) c =
       zipWith (zipper c)
         word filledInSoFar
 
-handleGuess :: Puzzle -> Char -> IO Puzzle
+handleGuess :: Puzzle -> Char -> IO (Puzzle, Bool)
 handleGuess puzzle guess = do
   putStrLn $ "Your guess was: " ++ [guess]
   case (charInWord puzzle guess, alreadyGuessed puzzle guess) of
     (_, True) -> do
-      putStrLn "You already guessed that\
-                \ character, pick \
-                \ something else!"
-      return puzzle
+      putStrLn "You already guessed that character, pick something else!"
+      return (puzzle, True)
     (True, _) -> do
-      putStrLn "This character was in the\
-                \ word, filling in the word\
-                \ accordingly"
-      return (fillInCharacter puzzle guess)
+      putStrLn "This character was in the word, filling in the word accordingly"
+      return ((fillInCharacter puzzle guess), False)
     (False, _) -> do
-      putStrLn "This character wasn't in\
-                \ the word, try again."
-      return (fillInCharacter puzzle guess)
+      putStrLn "This character wasn't in the word, try again."
+      return ((fillInCharacter puzzle guess), True)
 
-gameOver :: Puzzle -> IO ()
-gameOver (Puzzle wordToGuess _ guessed) =
-  if (length guessed) > 7 then
+gameOver :: Puzzle -> Int -> IO ()
+gameOver (Puzzle wordToGuess _ _) mistakes =
+  if mistakes > 7 then
     do
       putStrLn "You lose!"
-      putStrLn $
-        "The word was: " ++ wordToGuess
+      putStrLn $ "The word was: " ++ wordToGuess
       exitSuccess
   else return ()
 
@@ -111,21 +104,24 @@ gameWin (Puzzle _ filledInSoFar _) =
       exitSuccess
   else return ()
 
-runGame :: Puzzle -> IO ()
-runGame puzzle = forever $ do
-  gameOver puzzle
+runGame :: Puzzle -> Int -> IO ()
+runGame puzzle mistakes = forever $ do
+  gameOver puzzle mistakes
   gameWin puzzle
-  putStrLn $
-    "Current puzzle is: " ++ show puzzle
+  putStrLn $ "Current puzzle is: " ++ show puzzle
   putStr "Guess a letter: "
   guess <- getLine
   case guess of
-    [c] -> handleGuess puzzle c >>= runGame
+    [c] -> do
+      (p, wasWrong) <- handleGuess puzzle c
+      if wasWrong
+      then runGame p (mistakes + 1)
+      else runGame p mistakes
     _ ->  putStrLn "Your guess must be a single character"
 
 main :: IO ()
 main = do
   word <- randomWord'
   let puzzle = freshPuzzle (fmap toLower word)
-  runGame puzzle
+  runGame puzzle 0
 
